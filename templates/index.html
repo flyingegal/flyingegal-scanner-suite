@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>flyingegal Recon &amp; Security Suite (Windows)</title>
+  <style>
+    :root {
+      --bg: #0C0C0E;
+      --card-bg: rgba(24, 24, 28, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #0A84FF;
+      --green: #30D158;
+      --orange: #FF9F0A;
+      --purple: #BF5AF2;
+      --red: #FF453A;
+      --text: #F5F5F7;
+      --text-sec: #8E8E93;
+      --drawer-w: 540px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font); }
+    body { background: var(--bg); color: var(--text); padding: 24px 32px; min-height: 100vh; overflow-x: hidden; }
+
+    .top-navbar { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--card-border); margin-bottom: 24px; }
+    .brand-group { display: flex; align-items: baseline; gap: 12px; }
+    .brand-tag { font-size: 13px; font-weight: 800; color: var(--primary); letter-spacing: 1.5px; text-transform: uppercase; }
+    .suite-title { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+
+    .nav-actions { display: flex; gap: 10px; align-items: center; }
+    .btn-action {
+      background: var(--primary); color: #fff; border: none; padding: 10px 16px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    }
+    .btn-action.ipconfig { background: #5856D6; color: #fff; }
+    .btn-action.rf { background: var(--orange); }
+    .btn-action.adb { background: #34C759; color: #000; font-weight: 700; }
+    .btn-action.manual { background: rgba(255,255,255,0.08); border: 1px solid var(--card-border); color: #fff; }
+
+    .recon-grid { display: grid; grid-template-columns: 460px 1fr; gap: 24px; align-items: start; }
+
+    .radar-panel {
+      background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; padding: 20px;
+      display: flex; flex-direction: column; gap: 14px; position: sticky; top: 24px;
+    }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: var(--text-sec); text-transform: uppercase; }
+    #topologyCanvas { width: 100%; height: 360px; background: rgba(0,0,0,0.45); border-radius: 12px; }
+    .radar-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: var(--text-sec); padding-top: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    .inventory-panel { display: flex; flex-direction: column; gap: 16px; }
+    .filter-bar {
+      background: rgba(255,255,255,0.04); padding: 4px; border-radius: 12px; display: flex; gap: 4px;
+      overflow-x: auto; border: 1px solid var(--card-border);
+    }
+    .filter-btn {
+      flex: 1; min-width: fit-content; background: transparent; border: none; color: var(--text-sec);
+      font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+    }
+    .filter-btn.active { background: #3A3A3C; color: #fff; }
+
+    .cards-container { display: flex; flex-direction: column; gap: 12px; }
+    .node-card {
+      background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .card-top { display: flex; justify-content: space-between; align-items: center; }
+    .node-main { display: flex; align-items: center; gap: 16px; }
+    .node-icon-box {
+      width: 48px; height: 48px; border-radius: 12px; background: rgba(255,255,255,0.06);
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+    }
+    .node-info-text { display: flex; flex-direction: column; gap: 4px; }
+    .node-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .node-name { font-size: 16px; font-weight: 600; }
+    .os-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: rgba(10, 132, 255, 0.15); color: var(--primary); }
+    .adb-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: rgba(52, 199, 89, 0.2); color: var(--green); border: 1px solid var(--green); }
+    .node-subtext { font-size: 13px; color: var(--text-sec); font-family: ui-monospace, monospace; }
+    .node-ports { font-size: 12px; color: var(--green); font-weight: 600; }
+
+    .card-actions { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.05); flex-wrap: wrap; }
+    .action-chip {
+      background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); color: #FFF;
+      font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    }
+    .action-chip.live { background: rgba(48, 209, 88, 0.15); color: var(--green); border-color: var(--green); }
+    .action-chip.adb-btn { background: rgba(52, 199, 89, 0.25); color: #34C759; border-color: #34C759; }
+
+    /* Drawer */
+    .drawer-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      z-index: 1200; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .drawer-overlay.active { opacity: 1; pointer-events: auto; }
+    .right-drawer {
+      position: fixed; top: 0; right: -560px; width: var(--drawer-w); height: 100vh;
+      background: #1C1C1E; border-left: 1px solid var(--card-border); z-index: 1300;
+      box-shadow: -10px 0 40px rgba(0,0,0,0.8); display: flex; flex-direction: column; transition: right 0.35s;
+    }
+    .right-drawer.open { right: 0; }
+    .drawer-header { padding: 20px 24px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; }
+    .drawer-title { font-size: 18px; font-weight: 700; }
+    .drawer-content { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+    .stat-box { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-card { background: rgba(255,255,255,0.04); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; }
+    .stat-card .val { font-size: 24px; font-weight: 700; color: var(--primary); }
+    .stat-card .lbl { font-size: 12px; color: var(--text-sec); text-transform: uppercase; margin-top: 4px; }
+
+    .table-list { display: flex; flex-direction: column; gap: 6px; }
+    .table-row {
+      background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px;
+      padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 13px;
+    }
+    .table-row.match { border-left: 3px solid var(--green); }
+    .close-drawer { cursor: pointer; font-size: 22px; color: var(--text-sec); }
+    .manual-sec { background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .manual-sec h4 { color: var(--primary); font-size: 14px; }
+    .manual-sec p { color: var(--text-sec); font-size: 13px; line-height: 1.5; }
+    .spinner { border: 2px solid rgba(255,255,255,0.25); border-top-color: #fff; border-radius: 50%; width: 14px; height: 14px; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="top-navbar">
+    <div class="brand-group">
+      <span class="brand-tag">flyingegal</span>
+      <h1 class="suite-title">Windows Recon &amp; Security Suite</h1>
+    </div>
+    <div class="nav-actions">
+      <button id="netBtn" class="btn-action" onclick="executeScan('/api/scan', this, 'Sweeping Subnet...')">⚡ Network Sweep</button>
+      <button class="btn-action ipconfig" onclick="openIpconfigDrawer()">📋 ipconfig &amp; ARP Table</button>
+      <button class="btn-action adb" onclick="openAdbDrawer()">🤖 ADB Manager</button>
+      <button class="btn-action rf" onclick="executeScan('/api/airspace', this, 'Scanning Wi-Fi...')">📡 Wi-Fi Airspace</button>
+      <button class="btn-action manual" onclick="openManualDrawer()">📖 Manual</button>
+    </div>
+  </div>
+
+  <div class="recon-grid">
+    <div class="radar-panel">
+      <div class="panel-header">
+        <span>Spatial Spectrum &amp; Topology Radar</span>
+        <span id="radarStatus" style="color:var(--primary)">Idle</span>
+      </div>
+      <canvas id="topologyCanvas"></canvas>
+      <div class="radar-legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#0A84FF"></span> Cameras / CCTV</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#30D158"></span> Mobiles / ADB Ready</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#FF9F0A"></span> Gateways / IoT</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#FF453A"></span> New / Untrusted</div>
+      </div>
+    </div>
+
+    <div class="inventory-panel">
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="applyFilter('all', this)">All Nodes</button>
+        <button class="filter-btn" onclick="applyFilter('camera', this)">Cameras / NVR</button>
+        <button class="filter-btn" onclick="applyFilter('mobile', this)">Phones &amp; ADB</button>
+        <button class="filter-btn" onclick="applyFilter('router', this)">Routers</button>
+        <button class="filter-btn" onclick="applyFilter('computer', this)">Workstations</button>
+      </div>
+
+      <div id="cardsList" class="cards-container">
+        <div style="text-align:center; color:var(--text-sec); padding:60px 0;">
+          Tap <strong>Network Sweep</strong> to query active nodes on the subnet.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE-OUT DRAWER -->
+  <div id="drawerOverlay" class="drawer-overlay" onclick="closeDrawer()"></div>
+  <div id="rightDrawer" class="right-drawer">
+    <div class="drawer-header">
+      <h3 id="drawerTitle" class="drawer-title">Inspection</h3>
+      <span class="close-drawer" onclick="closeDrawer()">✕</span>
+    </div>
+    <div id="drawerBody" class="drawer-content"></div>
+  </div>
+
+  <script>
+    let inventory = [];
+    let activeAdbTarget = "";
+    const canvas = document.getElementById('topologyCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function drawSpatialRadar(nodes, centerLabel) {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = "rgba(10, 132, 255, 0.12)";
+      [40, 80, 120, 155].forEach(r => {
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+      });
+
+      ctx.fillStyle = "#0A84FF";
+      ctx.beginPath(); ctx.arc(cx, cy, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#FFFFFF"; ctx.font = "11px sans-serif";
+      ctx.fillText(centerLabel || "Windows PC", cx - 30, cy + 22);
+
+      if (!nodes || nodes.length === 0) return;
+
+      nodes.forEach((n, i) => {
+        let dist = n.type === 'camera' ? 60 : (n.gateway ? 35 : 100);
+        const angle = (Math.PI * 2 / nodes.length) * i;
+        const x = cx + Math.cos(angle) * dist;
+        const y = cy + Math.sin(angle) * dist;
+
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke();
+
+        ctx.fillStyle = n.type === 'camera' ? "#0A84FF" : (n.adb_ready || n.type === 'mobile' ? "#30D158" : "#FF9F0A");
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+      });
+    }
+
+    async function executeScan(endpoint, btn, statusMsg) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = `<div class="spinner"></div> ${statusMsg}`;
+      btn.disabled = true;
+      document.getElementById('radarStatus').textContent = statusMsg;
+
+      try {
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        inventory = data.devices;
+        document.getElementById('radarStatus').textContent = `${data.count} Nodes Active`;
+        renderCards(inventory);
+        drawSpatialRadar(inventory, data.my_ip || "Windows PC");
+      } catch (e) {
+        alert("Scan execution error.");
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    function renderCards(nodes) {
+      const list = document.getElementById('cardsList');
+      list.innerHTML = '';
+      if (!nodes || nodes.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:var(--text-sec); padding:40px 0;">No matching nodes found.</div>';
+        return;
+      }
+
+      nodes.forEach(n => {
+        const card = document.createElement('div');
+        card.className = 'node-card';
+        card.innerHTML = `
+          <div class="card-top">
+            <div class="node-main">
+              <div class="node-icon-box">${n.icon}</div>
+              <div class="node-info-text">
+                <div class="node-title-row">
+                  <span class="node-name">${n.vendor}</span>
+                  <span class="os-badge">${n.os || 'Host'}</span>
+                  ${n.adb_ready ? '<span class="adb-badge">⚡ ADB Available</span>' : ''}
+                </div>
+                <div class="node-subtext">${n.ip ? 'IP: ' + n.ip + ' &bull; ' : ''}MAC: ${n.mac}</div>
+              </div>
+            </div>
+            <div class="node-ports">${n.ports && n.ports.length > 0 ? 'Ports: ' + n.ports.join(', ') : 'Online'}</div>
+          </div>
+          <div class="card-actions">
+            ${n.adb_ready ? `<button class="action-chip adb-btn" onclick="openAdbForIp('${n.ip}')">⚡ Manage via ADB</button>` : ''}
+            ${n.type === 'camera' ? `<button class="action-chip live" onclick="viewCamera('${n.ip}')">▶ Live RTSP Snapshot</button>` : ''}
+            ${n.ip ? `<button class="action-chip" onclick="runTool('scapy', '${n.ip}')">Ping &amp; TTL Probe</button>` : ''}
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    function openDrawer(title, htmlContent) {
+      document.getElementById('drawerTitle').textContent = title;
+      document.getElementById('drawerBody').innerHTML = htmlContent;
+      document.getElementById('drawerOverlay').classList.add('active');
+      document.getElementById('rightDrawer').classList.add('open');
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawerOverlay').classList.remove('active');
+      document.getElementById('rightDrawer').classList.remove('open');
+    }
+
+    async function openIpconfigDrawer() {
+      openDrawer("ipconfig & Windows ARP Table", `<div style="text-align:center; padding:40px 0;"><div class="spinner" style="margin:0 auto 10px;"></div>Reading Windows network configuration...</div>`);
+      try {
+        const res = await fetch('/api/ipconfig');
+        const data = await res.json();
+        const iface = data.interface;
+        const neighbors = data.neighbors || [];
+        const sweepIps = new Set(inventory.map(d => d.ip));
+
+        const html = `
+          <div class="manual-sec">
+            <h4>Windows Adapter Configuration</h4>
+            <div style="font-family:monospace; font-size:12px; color:var(--text-sec); display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+              <div>Local IPv4: <span style="color:var(--green);">${iface.ip}</span></div>
+              <div>Default Gateway: <span style="color:var(--orange);">${iface.gateway || 'Not detected'}</span></div>
+              <div>Assigned Subnet: <span style="color:var(--primary);">${iface.subnet}</span></div>
+            </div>
+          </div>
+
+          <div class="stat-box">
+            <div class="stat-card">
+              <div class="val">${neighbors.length}</div>
+              <div class="lbl">Windows ARP Cache</div>
+            </div>
+            <div class="stat-card">
+              <div class="val" style="color:var(--green);">${inventory.length}</div>
+              <div class="lbl">Sweep Discovered</div>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label style="font-size:12px; font-weight:700; color:var(--text-sec); text-transform:uppercase;">Windows ARP Entries (arp -a)</label>
+            <div class="table-list">
+              ${neighbors.map(n => `
+                <div class="table-row ${sweepIps.has(n.ip) ? 'match' : ''}">
+                  <div>
+                    <div style="font-weight:700; color:#fff;">${n.ip} ${n.is_gateway ? '<span style="color:var(--orange); font-size:10px;">[GATEWAY]</span>' : ''}</div>
+                    <div style="font-size:11px; color:var(--text-sec);">${n.mac}</div>
+                  </div>
+                  <div><span style="font-size:10px; color:${sweepIps.has(n.ip) ? 'var(--green)' : 'var(--text-sec)'}">${sweepIps.has(n.ip) ? 'Swept' : 'ARP Only'}</span></div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        document.getElementById('drawerBody').innerHTML = html;
+      } catch (e) {
+        document.getElementById('drawerBody').innerHTML = '<div style="color:var(--red);">Failed to read ipconfig.</div>';
+      }
+    }
+
+    async function openAdbDrawer() {
+      openDrawer("Windows ADB Manager", `<div style="text-align:center; padding:40px 0;"><div class="spinner" style="margin:0 auto 10px;"></div>Querying adb.exe...</div>`);
+      try {
+        const res = await fetch('/api/adb/devices');
+        const data = await res.json();
+        const devices = data.devices || [];
+        let devOptions = devices.map(d => `<option value="${d.serial}">${d.model} (${d.serial})</option>`).join('');
+        if (!devOptions) devOptions = `<option value="">No Active ADB Device Attached</option>`;
+
+        const html = `
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label style="font-size:12px; font-weight:700; color:var(--text-sec); text-transform:uppercase;">Active Device</label>
+            <select id="adbTargetSelect" style="background:rgba(0,0,0,0.4); border:1px solid var(--card-border); border-radius:8px; color:#fff; padding:10px; font-size:13px;" onchange="activeAdbTarget=this.value">
+              ${devOptions}
+            </select>
+          </div>
+
+          <div class="manual-sec">
+            <h4 style="margin-bottom:8px;">Wireless ADB Connect</h4>
+            <input type="text" id="adbConnectIp" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid var(--card-border); border-radius:8px; color:#fff; padding:10px; font-size:13px; margin-bottom:8px;" placeholder="Phone IP (e.g. 192.168.1.50)">
+            <button style="width:100%; background:#34C759; color:#000; font-weight:700; border:none; padding:10px; border-radius:8px; cursor:pointer;" onclick="connectWirelessAdb()">Connect Port 5555</button>
+          </div>
+
+          <div class="manual-sec">
+            <h4 style="margin-bottom:8px;">App Management Presets</h4>
+            <input type="text" id="adbPkg" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid var(--card-border); border-radius:8px; color:#fff; padding:10px; font-size:13px; margin-bottom:6px;" placeholder="App Package Name">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <button style="background:var(--primary); color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer;" onclick="execAdbAction('set_launcher')">Set Default Home</button>
+              <button style="background:rgba(255,69,58,0.15); color:var(--red); border:1px solid var(--red); padding:10px; border-radius:8px; cursor:pointer;" onclick="execAdbAction('clear_cache')">Clear Cache/Data</button>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label style="font-size:12px; font-weight:700; color:var(--text-sec); text-transform:uppercase;">ADB Output</label>
+            <div id="adbConsole" style="background:#000; color:#30D158; padding:12px; border-radius:8px; font-family:monospace; font-size:12px; max-height:200px; overflow-y:auto; border:1px solid #333;">Ready.</div>
+          </div>
+        `;
+        document.getElementById('drawerBody').innerHTML = html;
+        const sel = document.getElementById('adbTargetSelect');
+        if (sel && sel.value) activeAdbTarget = sel.value;
+      } catch (err) {
+        document.getElementById('drawerBody').innerHTML = '<div style="color:var(--red);">ADB not reachable. Ensure adb.exe is in PATH.</div>';
+      }
+    }
+
+    function openAdbForIp(ip) {
+      openAdbDrawer().then(() => {
+        const inp = document.getElementById('adbConnectIp');
+        if (inp) inp.value = ip;
+      });
+    }
+
+    async function connectWirelessAdb() {
+      const ip = document.getElementById('adbConnectIp').value.trim();
+      const consoleBox = document.getElementById('adbConsole');
+      if (!ip) return alert("Enter an IP address first.");
+      consoleBox.textContent = `Connecting to ${ip}:5555...`;
+      try {
+        const res = await fetch('/api/adb/connect', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ip: ip, port: "5555"})
+        });
+        const data = await res.json();
+        consoleBox.textContent = data.output;
+        openAdbDrawer();
+      } catch (e) {
+        consoleBox.textContent = "Error executing adb connect.";
+      }
+    }
+
+    async function execAdbAction(action) {
+      const target = document.getElementById('adbTargetSelect') ? document.getElementById('adbTargetSelect').value : activeAdbTarget;
+      const pkg = document.getElementById('adbPkg') ? document.getElementById('adbPkg').value.trim() : "";
+      const consoleBox = document.getElementById('adbConsole');
+
+      if (!target) return alert("Select or connect an active ADB target.");
+      consoleBox.textContent = `Executing ${action}...`;
+      try {
+        const res = await fetch('/api/adb/action', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({target: target, action: action, pkg: pkg})
+        });
+        const data = await res.json();
+        consoleBox.textContent = data.output;
+      } catch (e) {
+        consoleBox.textContent = "Action failed.";
+      }
+    }
+
+    async function runTool(tool, ip) {
+      openDrawer(`Probe Target: ${ip}`, `<div style="text-align:center; padding:30px 0;"><div class="spinner" style="margin:0 auto 10px;"></div>Running diagnostic...</div>`);
+      try {
+        const res = await fetch(`/api/tool/${tool}/${ip}`);
+        const data = await res.json();
+        const html = `
+          <div class="manual-sec">
+            <h4>Target: ${ip}</h4>
+            <div style="background:#000; color:#30D158; padding:12px; border-radius:8px; font-family:monospace; font-size:12px; white-space:pre-wrap; margin-top:10px;">${data.output}</div>
+          </div>
+        `;
+        document.getElementById('drawerBody').innerHTML = html;
+      } catch (e) {
+        document.getElementById('drawerBody').innerHTML = '<div style="color:var(--red);">Probe execution failed.</div>';
+      }
+    }
+
+    function viewCamera(ip) {
+      const content = `
+        <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+          <img src="/api/snapshot/${ip}?t=${new Date().getTime()}" style="width:100%; border-radius:10px; background:#000; min-height:240px; object-fit:contain;" alt="Requesting RTSP Stream...">
+          <span style="color:var(--text-sec); font-size:12px;">Port 554 RTSP Frame Snatcher via FFmpeg</span>
+        </div>
+      `;
+      openDrawer(`RTSP Snapshot &bull; ${ip}`, content);
+    }
+
+    function openManualDrawer() {
+      const content = `
+        <div class="manual-sec">
+          <h4>Windows Networking Baseline</h4>
+          <p>This Windows edition uses Windows kernel sockets, <code>arp -a</code>, and <code>ipconfig</code> to build an active topology map without requiring Linux-specific root raw-socket tools.</p>
+        </div>
+      `;
+      openDrawer("Field Manual", content);
+    }
+
+    function applyFilter(category, btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (category === 'all') renderCards(inventory);
+      else renderCards(inventory.filter(d => d.type === category));
+    }
+
+    window.onload = () => drawSpatialRadar([], "Windows PC");
+  </script>
+</body>
+</html>
